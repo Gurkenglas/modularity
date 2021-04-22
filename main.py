@@ -2,9 +2,7 @@
 
 import torch
 import torch.nn as nn
-
 vmap = lambda f, x: torch.stack([f(x) for x in x.unbind()])
-torch.Tensor.combine = lambda self, dim: self.reshape(*self.shape[:dim], -1, *self.shape[dim+2:])
 
 # Record all outputs of linear modules as f(x) runs.
 accumulator = []
@@ -15,14 +13,13 @@ def activations(f, x):
   return torch.hstack(accumulator)
 
 class Lambda(nn.Module):
-  def __init__(self, param, func):
+  def __init__(self, func):
     super().__init__()
-    self.param = nn.Parameter(param)
-    self.func = func
-  def forward(self, input):
-    return self.func(input, self.param)
+    self.func=func
+  def forward(self, x):
+    return self.func(x)
 
-def trace(input, _):  # eeeeevil
+def trace(input):  # eeeeevil
   global accumulator
   accumulator.append(input)
   return input
@@ -30,8 +27,7 @@ def trace(input, _):  # eeeeevil
 layer = lambda dims: nn.Sequential(
   nn.GELU(),
   nn.Linear(dims[0], dims[1]),
-  Lambda(torch.zeros(dims[1]), lambda input, param: input + torch.normal(0, param)),
-  Lambda(torch.empty([]), trace)
+  Lambda(trace)
 )
 
 mlp = lambda dims: nn.Sequential(
