@@ -63,12 +63,12 @@ for _ in range(100):
   loss.backward()
   optimizer.step()
   optimizer.zero_grad()
-x = torch.rand([sqrtnsamples * sqrtnsamples, nteachers, inputdims])
+x = torch.rand([sqrtnsamples * sqrtnsamples, inputdims])
 # each j describes what student does to a neighborhood of x
-js = vmap(lambda x: jacobian(lambda x: activations(Vmap(*teachers), x), x), x)
+js = vmap(lambda x: jacobian(lambda x: activations(student, x), x), x)
 # student sends a normal distribution around x with covariance matrix 1
 # to a normal distribution with this     covariance matrix:
 covs = vmap(lambda j: j @ j.T, js)
-corrs = vmap(correlation, covs)
-yyxx = corrs.view(sqrtnsamples, sqrtnsamples, *corrs.shape[1:]).permute([2, 0, 3, 1])
+squaredcorrs = vmap(correlation, covs).pow(2)
+yyxx = squaredcorrs.view(sqrtnsamples, sqrtnsamples, *squaredcorrs.shape[1:]).permute([2, 0, 3, 1])
 show(yyxx.reshape(yyxx.shape[0] * yyxx.shape[1], yyxx.shape[2] * yyxx.shape[3]))
